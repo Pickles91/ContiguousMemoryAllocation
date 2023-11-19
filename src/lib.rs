@@ -27,7 +27,7 @@ pub fn parse_config(s: &str) -> Option<Config> {
                 .map(|item| item.to_string())
                 .collect::<Vec<_>>()
         })
-        .map(|pair| dbg!(pair).try_into().map(|[a, b]: [String; 2]| (a, b)))
+        .map(|pair| pair.try_into().map(|[a, b]: [String; 2]| (a, b)))
         .collect::<Result<HashMap<_, _>, _>>()
         .ok()?;
     Some(Config {
