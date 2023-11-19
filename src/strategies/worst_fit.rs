@@ -143,33 +143,35 @@ mod tests {
     // ⣿⣿⣿⣿⣎⡹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⢋⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿
     // ⣿⣿⣿⣿⣿⣿⣤⡙⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠟⣋⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
     // ⣿⣿⣿⣿⣿⣿⣿⣿⣷⣤⣍⣛⠛⠛⠛⠻⣿⣿⣿⣿⣿⣿⣿⡟⠛⠛⣛⣋⣭⣤⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    //#[test]
-    //fn basic_worst_fit_test() {
-    //let mut allocator = WorstFit::new(128);
-    //allocator.mem = vec![
-    //MemoryRegion(Some(Pid(0)), 0),
-    //MemoryRegion(None, 15), // gap of 6
-    //MemoryRegion(Some(Pid(2)), 21),
-    //MemoryRegion(None, 22), // gap of 3
-    //MemoryRegion(Some(Pid(3)), 25),
-    //MemoryRegion(None, 128),
-    //];
-    //assert_eq!(
-    //allocator
-    //.request(MemoryRequest {
-    //process: Pid(1),
-    //size: 3
-    //})
-    //.tick()
-    //.0,
-    //vec![
-    //MemoryRegion(Some(Pid(0)), 0),
-    //MemoryRegion(Some(Pid(1)), 15), // gap of 6
-    //MemoryRegion(Some(Pid(2)), 21),
-    //MemoryRegion(None, 22),
-    //MemoryRegion(Some(Pid(3)), 25),
-    //MemoryRegion(None, 128),
-    //]
-    //);
-    //}
+    #[test]
+    fn basic_worst_fit_test() {
+        let mut allocator = WorstFit::new(128);
+        allocator.mem = vec![
+            MemoryRegion(Some((Pid(0), 3)), 0),
+            MemoryRegion(None, 15), // gap of 6
+            MemoryRegion(Some((Pid(2), 3)), 21),
+            MemoryRegion(None, 22), // gap of 3
+            MemoryRegion(Some((Pid(3), 3)), 25),
+            MemoryRegion(None, 128),
+        ];
+        assert_eq!(
+            allocator
+                .request(MemoryRequest {
+                    process: Pid(1),
+                    size: 3,
+                    lifetime: 3,
+                })
+                .tick()
+                .0,
+            vec![
+                MemoryRegion(Some((Pid(0), 2)), 0),
+                MemoryRegion(Some((Pid(1), 3)), 15), // inserted into gap of 6, now gap of 3.
+                MemoryRegion(None, 18),
+                MemoryRegion(Some((Pid(2), 2)), 21),
+                MemoryRegion(None, 22),
+                MemoryRegion(Some((Pid(3), 2)), 25),
+                MemoryRegion(None, 128),
+            ]
+        );
+    }
 }
