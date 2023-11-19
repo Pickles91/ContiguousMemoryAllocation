@@ -49,10 +49,9 @@ impl NextFit {
             out.reqs.push_front(req);
             return out;
         };
-        // increment the offset by how much we moved, +1 for the next region
-        // (since the current index will be the new slot for the req).
-        // We then mod the memory's length so it won't go beyond the memory buffer (e.g.
-        // it will cycle).
+
+        // increment the offset by how much we moved.
+        // this is the current index we want to insert into.
         self.offset += index_from_offset;
         self.offset %= self.mem.len();
 
