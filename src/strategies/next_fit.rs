@@ -55,7 +55,9 @@ impl NextFit {
         self.offset += index_from_offset;
         self.offset %= self.mem.len();
 
-        // Insert the new memory region, followed by modifying the next memory region to be smaller (or be gone, depending).
+        // when inserting into the memory region we have to be careful that the next memory region
+        // does not end up having the same starting point as the one after it (e.g. the next
+        // region should not have a memory size of 0). If we do... prune it out.
         self.mem.insert(
             self.offset,
             MemoryRegion(Some(req.process), self.mem[self.offset].1),
