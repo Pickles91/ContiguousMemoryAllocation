@@ -44,7 +44,8 @@ impl NextFit {
                 true
             });
         let Some((index_from_offset, _)) = fitting_region else {
-            // we couldn't find one, so do the next request.
+            // we couldn't find one, so do the other requests,
+            // and then exit out.
             let mut out = self.fullfill_reqs();
             out.reqs.push_front(req);
             return out;
