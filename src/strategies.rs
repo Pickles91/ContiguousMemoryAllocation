@@ -1,6 +1,6 @@
 mod best_fit;
 mod next_fit;
-
+mod worst_fit;
 
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
 pub struct Pid(u32);
