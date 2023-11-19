@@ -2,8 +2,11 @@ mod best_fit;
 mod next_fit;
 mod worst_fit;
 
+type Addr = u32;
+type Lifetime = i32;
+
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
-pub struct Pid(u32);
+pub struct Pid(pub u32);
 
 /// This PID is special, it means that
 /// following address space isn't accessible (e.g.
@@ -17,15 +20,16 @@ const FINAL_MEM_REGION_PID: u32 = 999;
 /// In order to know where it ends, check the next
 /// memory regions start field (exclusive).
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
-pub struct MemoryRegion(Option<Pid>, u32);
+pub struct MemoryRegion(Option<(Pid, Lifetime)>, Addr);
 
 /// A Memory Request that needs to be served by the Memory
 /// allocator. It holds a PID that's requesting the memory,
 /// as well as the size it's requesting in KB.
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
 pub struct MemoryRequest {
-    process: Pid,
-    size: u32,
+    pub process: Pid,
+    pub size: u32,
+    pub lifetime: u32,
 }
 
 /// This MemAllocator API is an immutable API. When working with
@@ -40,11 +44,6 @@ trait MemAllocator
 where
     Self: Sized,
 {
-    /// Deallocate a process PID from memory
-    /// Note: yes, this API supports dynamically requesting memory,
-    /// but not dynamically releasing. I didn't uh, realize that wasn't a
-    /// part of the project requirements, so dynamic alloc is supported.
-    fn dealloc(&self, proc: Pid) -> Self;
     /// initializes a memory request, which returns a new
     /// instance of the allocator with the request logged.
     fn request(&self, req: MemoryRequest) -> Self;

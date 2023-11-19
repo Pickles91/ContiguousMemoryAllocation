@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 
 use super::{MemAllocator, MemoryRegion, MemoryRequest, Pid, FINAL_MEM_REGION_PID};
 
@@ -19,7 +19,7 @@ impl NextFit {
             reqs: VecDeque::new(),
             mem: vec![
                 MemoryRegion(None, 0),
-                MemoryRegion(Some(Pid(FINAL_MEM_REGION_PID)), mem_size),
+                MemoryRegion(Some((Pid(FINAL_MEM_REGION_PID), -1)), mem_size),
             ],
             time: 0,
             offset: 0,
@@ -64,7 +64,10 @@ impl NextFit {
         // region should not have a memory size of 0). If we do... prune it out.
         self.mem.insert(
             self.offset,
-            MemoryRegion(Some(req.process), self.mem[self.offset].1),
+            MemoryRegion(
+                Some((req.process, req.lifetime as _)),
+                self.mem[self.offset].1,
+            ),
         );
         self.mem[self.offset + 1].1 += req.size;
         match self.mem.get(self.offset + 2) {
@@ -76,33 +79,15 @@ impl NextFit {
         // do the rest of the requests.
         self.fullfill_reqs()
     }
-}
-
-impl MemAllocator for NextFit {
-    fn request(&self, req: MemoryRequest) -> Self {
+    fn dealloc(&self) -> Self {
         let mut out = self.clone();
-        out.reqs.push_back(req);
-        out
-    }
-
-    fn tick(&self) -> (Vec<MemoryRegion>, Self) {
-        let mut out = self.clone();
-        out.time += 1;
-        let out = out.fullfill_reqs();
-        (out.mem.clone(), out)
-    }
-
-    fn dealloc(&self, proc: super::Pid) -> Self {
-        let mut out = self.clone();
+        let offset_mem_addr = out.mem[self.offset].1;
         out.mem = out
             .mem
             .into_iter()
-            .map(|mem| {
-                if mem.0 == Some(proc) {
-                    MemoryRegion(None, mem.1)
-                } else {
-                    mem
-                }
+            .map(|mem| match mem.0 {
+                Some((_, 0)) => MemoryRegion(None, mem.1),
+                _ => mem,
             })
             .collect();
         // merge neighboring regions with the same
@@ -117,7 +102,40 @@ impl MemAllocator for NextFit {
             }
             acc
         });
+        let (offset, region) = out
+            .mem
+            .iter()
+            .enumerate()
+            .filter(|(_, region)| region.1 >= offset_mem_addr)
+            .next()
+            .unwrap();
+        out.offset = if region.1 as usize == self.offset {
+            offset
+        } else {
+            offset - 1
+        };
         out
+    }
+}
+
+impl MemAllocator for NextFit {
+    fn request(&self, req: MemoryRequest) -> Self {
+        let mut out = self.clone();
+        out.reqs.push_back(req);
+        out
+    }
+
+    fn tick(&self) -> (Vec<MemoryRegion>, Self) {
+        let mut out = self.clone();
+        out.time += 1;
+        for i in out.mem.iter_mut() {
+            match i {
+                MemoryRegion(Some((pid, lifetime)), _) if *lifetime > 0 => *lifetime -= 1,
+                _ => {}
+            }
+        }
+        let out = out.dealloc().fullfill_reqs();
+        (out.mem.clone(), out)
     }
 }
 
@@ -138,24 +156,27 @@ mod tests {
             .request(MemoryRequest {
                 process: Pid(1),
                 size: 10,
+                lifetime: 5,
             })
             .request(MemoryRequest {
                 process: Pid(1),
                 size: 11,
+                lifetime: 5,
             })
             .request(MemoryRequest {
                 process: Pid(2),
                 size: 7,
+                lifetime: 5,
             });
         let (mem, _) = allocator.tick();
         assert_eq!(
             mem,
             vec![
-                MemoryRegion(Some(Pid(1)), 0),
-                MemoryRegion(Some(Pid(1)), 10),
-                MemoryRegion(Some(Pid(2)), 21),
+                MemoryRegion(Some((Pid(1), 5)), 0),
+                MemoryRegion(Some((Pid(1), 5)), 10),
+                MemoryRegion(Some((Pid(2), 5)), 21),
                 MemoryRegion(None, 28),
-                MemoryRegion(Some(Pid(FINAL_MEM_REGION_PID)), 128)
+                MemoryRegion(Some((Pid(FINAL_MEM_REGION_PID), -1)), 128)
             ]
         )
     }
@@ -168,27 +189,27 @@ mod tests {
             .request(MemoryRequest {
                 process: Pid(1),
                 size: 10,
+                lifetime: 1,
             })
             .request(MemoryRequest {
                 process: Pid(2),
                 size: 7,
+                lifetime: 1,
             })
             .tick();
         assert_eq!(
             alloc
-                .dealloc(Pid(1))
                 .request(MemoryRequest {
-                    process: Pid(1),
+                    process: Pid(3),
                     size: 3,
+                    lifetime: 5,
                 })
                 .tick()
                 .0,
             vec![
-                MemoryRegion(None, 0),
-                MemoryRegion(Some(Pid(2)), 10),
-                MemoryRegion(Some(Pid(1)), 17),
-                MemoryRegion(None, 20),
-                MemoryRegion(Some(Pid(FINAL_MEM_REGION_PID)), 128)
+                MemoryRegion(Some((Pid(3), 5)), 0),
+                MemoryRegion(None, 3),
+                MemoryRegion(Some((Pid(FINAL_MEM_REGION_PID), -1)), 128)
             ]
         )
     }

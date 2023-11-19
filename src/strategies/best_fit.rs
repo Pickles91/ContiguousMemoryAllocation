@@ -16,7 +16,7 @@ impl BestFit {
             reqs: VecDeque::new(),
             mem: vec![
                 MemoryRegion(None, 0),
-                MemoryRegion(Some(Pid(super::FINAL_MEM_REGION_PID)), mem_size),
+                MemoryRegion(Some((Pid(super::FINAL_MEM_REGION_PID), -1)), mem_size),
             ],
             time: 0,
         }
@@ -39,8 +39,10 @@ impl BestFit {
             out.reqs.push_front(req);
             return out;
         };
-        self.mem
-            .insert(index, MemoryRegion(Some(req.process), self.mem[index].1));
+        self.mem.insert(
+            index,
+            MemoryRegion(Some((req.process, req.lifetime as i32)), self.mem[index].1),
+        );
         self.mem[index + 1].1 += size;
         match self.mem.get(index + 2) {
             Some(region) if region.1 == self.mem[index + 1].1 => {
@@ -50,33 +52,14 @@ impl BestFit {
         };
         self
     }
-}
-
-impl MemAllocator for BestFit {
-    fn request(&self, req: MemoryRequest) -> Self {
-        let mut out = self.clone();
-        out.reqs.push_back(req);
-        out
-    }
-
-    fn tick(&self) -> (Vec<MemoryRegion>, Self) {
-        let mut out = self.clone();
-        out.time += 1;
-        let out = out.fullfill_reqs();
-        (out.mem.clone(), out)
-    }
-
-    fn dealloc(&self, proc: super::Pid) -> Self {
+    fn dealloc(&self) -> Self {
         let mut out = self.clone();
         out.mem = out
             .mem
             .into_iter()
-            .map(|mem| {
-                if mem.0 == Some(proc) {
-                    MemoryRegion(None, mem.1)
-                } else {
-                    mem
-                }
+            .map(|mem| match mem.0 {
+                Some((_, 0)) => MemoryRegion(None, mem.1),
+                _ => mem,
             })
             .collect();
         // merge neighboring regions with the same
@@ -95,6 +78,27 @@ impl MemAllocator for BestFit {
     }
 }
 
+impl MemAllocator for BestFit {
+    fn request(&self, req: MemoryRequest) -> Self {
+        let mut out = self.clone();
+        out.reqs.push_back(req);
+        out
+    }
+
+    fn tick(&self) -> (Vec<MemoryRegion>, Self) {
+        let mut out = self.clone();
+        out.time += 1;
+        for i in out.mem.iter_mut() {
+            match i {
+                MemoryRegion(Some((pid, lifetime)), _) if *lifetime > 0 => *lifetime -= 1,
+                _ => {}
+            }
+        }
+        let out = out.dealloc().fullfill_reqs();
+        (out.mem.clone(), out)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::strategies::{MemAllocator, MemoryRegion, MemoryRequest, Pid};
@@ -105,6 +109,7 @@ mod tests {
     /// VERY HIGH QUALITY
     /// MUCH REASSURANCE.
     /// MANY WOW.
+    fn foo() {}
     // ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢠⣴⣷⣦⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⣛⡛⢿⣿⣿
     // ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢸⣿⣿⣿⣷⡸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢟⣡⣿⣿⡟⢣⠙⣿
     // ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢼⣿⣿⣿⣿⣷⡈⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢟⣵⠟⣿⣿⣿⣿⡄⢧⢸
@@ -134,27 +139,28 @@ mod tests {
     fn basic_best_fit_test() {
         let mut allocator = BestFit::new(128);
         allocator.mem = vec![
-            MemoryRegion(Some(Pid(0)), 0),
+            MemoryRegion(Some((Pid(0), 3)), 0),
             MemoryRegion(None, 15), // gap of 6
-            MemoryRegion(Some(Pid(2)), 21),
+            MemoryRegion(Some((Pid(2), 3)), 21),
             MemoryRegion(None, 22), // gap of 3
-            MemoryRegion(Some(Pid(3)), 25),
+            MemoryRegion(Some((Pid(3), 3)), 25),
             MemoryRegion(None, 128),
         ];
         assert_eq!(
             allocator
                 .request(MemoryRequest {
                     process: Pid(1),
-                    size: 3
+                    size: 3,
+                    lifetime: 3,
                 })
                 .tick()
                 .0,
             vec![
-                MemoryRegion(Some(Pid(0)), 0),
+                MemoryRegion(Some((Pid(0), 2)), 0),
                 MemoryRegion(None, 15), // gap of 6
-                MemoryRegion(Some(Pid(2)), 21),
-                MemoryRegion(Some(Pid(1)), 22),
-                MemoryRegion(Some(Pid(3)), 25),
+                MemoryRegion(Some((Pid(2), 2)), 21),
+                MemoryRegion(Some((Pid(1), 3)), 22),
+                MemoryRegion(Some((Pid(3), 2)), 25),
                 MemoryRegion(None, 128),
             ]
         );
