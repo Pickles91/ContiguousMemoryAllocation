@@ -4,5 +4,5 @@
 # them if you wish - their defaults will stay the same.
 MEMORY_MAX = 1024
 PROC_SIZE_MAX = 256
-NUM_PROC = 10
+NUM_PROC = 12
 MAX_PROC_TIME = 10000

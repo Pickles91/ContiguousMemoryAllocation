@@ -1,10 +1,14 @@
-use std::fs;
+use std::{fs, ops::Deref};
+
+mod log;
 
 use contiguous_memory_allocation::{
     parse_config,
     strategies::{BestFit, MemAllocator, MemoryRegion, MemoryRequest, NextFit, Pid, WorstFit},
 };
 use rand::{thread_rng, Rng};
+
+use crate::log::draw_gui;
 
 fn main() {
     // get the config file as the first argument to the process.
@@ -23,15 +27,24 @@ fn main() {
     let best = BestFit::new(config.memory_max);
     let next = NextFit::new(config.memory_max);
     let requests = gen_processes(config.num_proc, config.proc_size_max, config.max_proc_time);
-    let results = std::sync::Mutex::new(vec![]);
+    let results = std::sync::Mutex::new([None, None, None]);
     // we do this threaded bc I accidentally did a sleep, and I thought my simulation was just kind of slow...
     // turns out no, it's actually fast - but I ended up having threaded it anyways to do it concurrently so
     // here you go.
     std::thread::scope(|s| {
-        s.spawn(|| results.lock().unwrap().push(driver(next, &requests)));
-        s.spawn(|| results.lock().unwrap().push(driver(best, &requests)));
-        s.spawn(|| results.lock().unwrap().push(driver(worst, &requests)));
+        s.spawn(|| results.lock().unwrap()[0] = Some(driver(next, &requests)));
+        s.spawn(|| results.lock().unwrap()[1] = Some(driver(best, &requests)));
+        s.spawn(|| results.lock().unwrap()[2] = Some(driver(worst, &requests)));
     });
+    draw_gui(
+        results
+            .into_inner()
+            .unwrap()
+            .map(|i| i.unwrap())
+            .try_into()
+            .unwrap(),
+        config,
+    );
 }
 
 fn driver<T: MemAllocator>(mut alloc: T, requests: &[MemoryRequest]) -> Vec<Vec<MemoryRegion>> {
@@ -56,7 +69,7 @@ fn gen_processes(num_processes: u32, max_size: u32, lifetime: u32) -> Vec<Memory
         .map(|i| MemoryRequest {
             process: Pid(i),
             size: rng.gen_range(0..max_size),
-            lifetime: rng.gen_range(0..lifetime),
+            lifetime: rng.gen_range(0..lifetime / 1000),
         })
         .collect()
 }

@@ -24,7 +24,7 @@ const FINAL_MEM_REGION_PID: u32 = 999;
 /// In order to know where it ends, check the next
 /// memory regions start field (exclusive).
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
-pub struct MemoryRegion(Option<(Pid, Lifetime)>, Addr);
+pub struct MemoryRegion(pub Option<(Pid, Lifetime)>, pub Addr);
 
 /// A Memory Request that needs to be served by the Memory
 /// allocator. It holds a PID that's requesting the memory,
