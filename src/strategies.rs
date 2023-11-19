@@ -2,6 +2,10 @@ mod best_fit;
 mod next_fit;
 mod worst_fit;
 
+pub use best_fit::BestFit;
+pub use next_fit::NextFit;
+pub use worst_fit::WorstFit;
+
 type Addr = u32;
 type Lifetime = i32;
 
@@ -40,7 +44,7 @@ pub struct MemoryRequest {
 /// the current copy of memory, along with previous copies of memory),
 /// it makes sense from a simulation perspective since it allows you
 /// to step back and fourth, and reason about the changes over time.
-trait MemAllocator
+pub trait MemAllocator
 where
     Self: Sized,
 {

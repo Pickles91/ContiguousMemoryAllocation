@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-mod strategies;
+pub mod strategies;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
-    memory_max: u32,
-    proc_size_max: u32,
-    num_proc: u32,
-    max_proc_time: u32,
+    pub memory_max: u32,
+    pub proc_size_max: u32,
+    pub num_proc: u32,
+    pub max_proc_time: u32,
 }
 
 // this would have been a lot cleaner if I used the serde library
