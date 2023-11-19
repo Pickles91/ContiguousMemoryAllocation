@@ -1,3 +1,6 @@
+mod next_fit;
+
+
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
 pub struct Pid(u32);
 
