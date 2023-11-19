@@ -12,6 +12,7 @@
     devShells.x86_64-linux.default = pkgs.mkShell {
       packages = [
         pkgs.rust-analyzer
+        pkgs.rustfmt
       ];
       inherit buildInputs nativeBuildInputs;
     };

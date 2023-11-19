@@ -12,21 +12,39 @@ pub struct Config {
 // but I opted not too, for your sanity's sake.
 pub fn parse_config(s: &str) -> Option<Config> {
     let conf: HashMap<String, String> = s
-      .lines()
-      .map(|line| line.chars().filter(|i| !i.is_whitespace()).collect::<String>())
-      .filter(|i| !i.starts_with("#"))
-      .map(|line| line.to_lowercase())
-      .map(|pair| pair.split("=").map(|item| item.to_string()).collect::<Vec<_>>())
-      .map(|pair| {
-            dbg!(pair).try_into().map(|[a, b]: [String; 2]| (a, b))
+        .lines()
+        .map(|line| {
+            line.chars()
+                .filter(|i| !i.is_whitespace())
+                .collect::<String>()
         })
-      .collect::<Result<HashMap<_, _>, _>>()
-      .ok()?;
+        .filter(|i| !i.starts_with("#"))
+        .map(|line| line.to_lowercase())
+        .map(|pair| {
+            pair.split("=")
+                .map(|item| item.to_string())
+                .collect::<Vec<_>>()
+        })
+        .map(|pair| dbg!(pair).try_into().map(|[a, b]: [String; 2]| (a, b)))
+        .collect::<Result<HashMap<_, _>, _>>()
+        .ok()?;
     Some(Config {
-        memory_max: conf.get("memory_max").map(|i| i.parse().expect("COULDN'T PARSE MEMORY_MAX")).unwrap_or(1024),
-        proc_size_max: conf.get("proc_size_max").map(|i| i.parse().expect("COULDN'T PARSE PROC_SIZE_MAX")).unwrap_or(1024),
-        num_proc: conf.get("num_proc").map(|i| i.parse().expect("COULDN'T PARSE NUM_PROC")).unwrap_or(10),
-        max_proc_time: conf.get("max_proc_time").map(|i| i.parse().expect("COULDN'T PARSE MAX_PROC_TIME")).unwrap_or(10_000),
+        memory_max: conf
+            .get("memory_max")
+            .map(|i| i.parse().expect("COULDN'T PARSE MEMORY_MAX"))
+            .unwrap_or(1024),
+        proc_size_max: conf
+            .get("proc_size_max")
+            .map(|i| i.parse().expect("COULDN'T PARSE PROC_SIZE_MAX"))
+            .unwrap_or(1024),
+        num_proc: conf
+            .get("num_proc")
+            .map(|i| i.parse().expect("COULDN'T PARSE NUM_PROC"))
+            .unwrap_or(10),
+        max_proc_time: conf
+            .get("max_proc_time")
+            .map(|i| i.parse().expect("COULDN'T PARSE MAX_PROC_TIME"))
+            .unwrap_or(10_000),
     })
 }
 
