@@ -43,7 +43,7 @@ impl NextFit {
                 }
                 true
             });
-        let Some((index_of_fitting_region, _)) = fitting_region else {
+        let Some((index_from_offset, _)) = fitting_region else {
             // we couldn't find one, so do the next request.
             let mut out = self.fullfill_reqs();
             out.reqs.push_front(req);
@@ -53,7 +53,7 @@ impl NextFit {
         // (since the current index will be the new slot for the req).
         // We then mod the memory's length so it won't go beyond the memory buffer (e.g.
         // it will cycle).
-        self.offset += index_of_fitting_region;
+        self.offset += index_from_offset;
         self.offset %= self.mem.len();
 
         // Insert the new memory region, followed by modifying the next memory region to be smaller (or be gone, depending).
