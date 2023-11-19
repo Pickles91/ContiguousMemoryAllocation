@@ -35,6 +35,11 @@ trait MemAllocator
 where
     Self: Sized,
 {
+    /// Deallocate a process PID from memory
+    /// Note: yes, this API supports dynamically requesting memory,
+    /// but not dynamically releasing. I didn't uh, realize that wasn't a
+    /// part of the project requirements, so dynamic alloc is supported.
+    fn dealloc(&self, proc: Pid) -> Self;
     /// initializes a memory request, which returns a new
     /// instance of the allocator with the request logged.
     fn request(&self, req: MemoryRequest) -> Self;

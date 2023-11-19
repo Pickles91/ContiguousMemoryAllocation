@@ -71,6 +71,16 @@ impl MemAllocator for WorstFit {
         let out = out.fullfill_reqs();
         (out.mem.clone(), out)
     }
+
+    fn dealloc(&self, proc: super::Pid) -> Self {
+        let mut out = self.clone();
+        out.mem = out
+            .mem
+            .into_iter()
+            .filter(|mem| mem.0 != Some(proc))
+            .collect();
+        out
+    }
 }
 
 #[cfg(test)]

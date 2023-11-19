@@ -88,6 +88,22 @@ impl MemAllocator for NextFit {
         let out = out.fullfill_reqs();
         (out.mem.clone(), out)
     }
+
+    fn dealloc(&self, proc: super::Pid) -> Self {
+        let mut out = self.clone();
+        out.mem = out
+            .mem
+            .into_iter()
+            .map(|mem| {
+                if mem.0 == Some(proc) {
+                    MemoryRegion(None, mem.1)
+                } else {
+                    mem
+                }
+            })
+            .collect();
+        out
+    }
 }
 
 #[cfg(test)]
@@ -124,6 +140,39 @@ mod tests {
                 MemoryRegion(Some(Pid(1)), 10),
                 MemoryRegion(Some(Pid(2)), 21),
                 MemoryRegion(None, 28),
+                MemoryRegion(None, 128)
+            ]
+        )
+    }
+
+    /// I lied, here's another one. I wanted to test dealloc on atleast one impl,
+    /// so here you go.
+    #[test]
+    fn basic_test_dealloc() {
+        let (_, alloc) = NextFit::new(128)
+            .request(MemoryRequest {
+                process: Pid(1),
+                size: 10,
+            })
+            .request(MemoryRequest {
+                process: Pid(2),
+                size: 7,
+            })
+            .tick();
+        assert_eq!(
+            alloc
+                .dealloc(Pid(1))
+                .request(MemoryRequest {
+                    process: Pid(1),
+                    size: 3,
+                })
+                .tick()
+                .0,
+            vec![
+                MemoryRegion(None, 0),
+                MemoryRegion(Some(Pid(2)), 10),
+                MemoryRegion(Some(Pid(1)), 17),
+                MemoryRegion(None, 20),
                 MemoryRegion(None, 128)
             ]
         )
