@@ -25,7 +25,7 @@ impl BestFit {
         let Some(req) = self.reqs.pop_front() else {
             return self;
         };
-        let Some((index, size)) = self
+        let Some((index, _)) = self
             .mem
             .windows(2)
             .map(|window| TryInto::<[MemoryRegion; 2]>::try_into(window).unwrap())
@@ -43,14 +43,14 @@ impl BestFit {
             index,
             MemoryRegion(Some((req.process, req.lifetime as i32)), self.mem[index].1),
         );
-        self.mem[index + 1].1 += size;
+        self.mem[index + 1].1 += req.size;
         match self.mem.get(index + 2) {
             Some(region) if region.1 == self.mem[index + 1].1 => {
                 self.mem.remove(index + 1);
             }
             _ => {}
         };
-        self
+        self.fullfill_reqs()
     }
     fn dealloc(&self) -> Self {
         let mut out = self.clone();
