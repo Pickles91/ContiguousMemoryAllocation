@@ -32,7 +32,7 @@ impl NextFit {
         };
         let fitting_region = self.mem[self.offset..]
             .windows(2)
-            .chain(self.mem[..self.offset].windows(2))
+            .chain(self.mem[..self.offset + 1].windows(2))
             .enumerate()
             .find(|&(_, item)| {
                 let [a, b]: [MemoryRegion; 2] = item.try_into().unwrap();
@@ -57,7 +57,7 @@ impl NextFit {
         // increment the offset by how much we moved.
         // this is the current index we want to insert into.
         self.offset += index_from_offset;
-        self.offset %= self.mem.len();
+        self.offset %= self.mem.len() - 1;
 
         // when inserting into the memory region we have to be careful that the next memory region
         // does not end up having the same starting point as the one after it (e.g. the next
@@ -71,8 +71,12 @@ impl NextFit {
         );
         self.mem[self.offset + 1].1 += req.size;
         match self.mem.get(self.offset + 2) {
-            Some(MemoryRegion(_, starting)) if *starting <= self.mem[self.offset + 1].1 => {
+            Some(MemoryRegion(_, starting)) if *starting == self.mem[self.offset + 1].1 => {
                 self.mem.remove(self.offset + 1);
+            }
+            Some(MemoryRegion(_, starting)) if *starting < self.mem[self.offset + 1].1 => {
+                dbg!((starting, self.mem[self.offset + 1].1));
+                panic!("Overlapping memory regions")
             }
             _ => {}
         }
@@ -176,6 +180,36 @@ mod tests {
                 MemoryRegion(Some((Pid(1), 5)), 10),
                 MemoryRegion(Some((Pid(2), 5)), 21),
                 MemoryRegion(None, 28),
+                MemoryRegion(Some((Pid(FINAL_MEM_REGION_PID), -1)), 128)
+            ]
+        )
+    }
+
+    #[test]
+    fn test_full() {
+        let allocator = NextFit::new(128)
+            .request(MemoryRequest {
+                process: Pid(1),
+                size: 100,
+                lifetime: 5,
+            })
+            .request(MemoryRequest {
+                process: Pid(2),
+                size: 27,
+                lifetime: 5,
+            })
+            .request(MemoryRequest {
+                process: Pid(3),
+                size: 13,
+                lifetime: 5,
+            });
+        let (mem, _) = allocator.tick();
+        assert_eq!(
+            mem,
+            vec![
+                MemoryRegion(Some((Pid(1), 5)), 0),
+                MemoryRegion(Some((Pid(2), 5)), 100),
+                MemoryRegion(None, 127),
                 MemoryRegion(Some((Pid(FINAL_MEM_REGION_PID), -1)), 128)
             ]
         )
