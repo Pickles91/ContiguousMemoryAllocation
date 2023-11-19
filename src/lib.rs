@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+mod strategies;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     memory_max: u32,
