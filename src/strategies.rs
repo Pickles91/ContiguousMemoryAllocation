@@ -5,6 +5,11 @@ mod worst_fit;
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
 pub struct Pid(u32);
 
+/// This PID is special, it means that
+/// following address space isn't accessible (e.g.
+/// it's the final address in your address space).
+const FINAL_MEM_REGION_PID: u32 = 999;
+
 /// A Memory Region in the Memory.
 /// The first field represents a process that owns
 /// the region, if any. The second field represents

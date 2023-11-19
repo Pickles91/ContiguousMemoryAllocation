@@ -1,6 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
-use super::{MemAllocator, MemoryRegion, MemoryRequest};
+use super::{MemAllocator, MemoryRegion, MemoryRequest, Pid, FINAL_MEM_REGION_PID};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct NextFit {
@@ -17,7 +17,10 @@ impl NextFit {
     pub fn new(mem_size: u32) -> Self {
         Self {
             reqs: VecDeque::new(),
-            mem: vec![MemoryRegion(None, 0), MemoryRegion(None, mem_size)],
+            mem: vec![
+                MemoryRegion(None, 0),
+                MemoryRegion(Some(Pid(FINAL_MEM_REGION_PID)), mem_size),
+            ],
             time: 0,
             offset: 0,
         }
@@ -102,6 +105,18 @@ impl MemAllocator for NextFit {
                 }
             })
             .collect();
+        // merge neighboring regions with the same
+        // owner by removing the second region with the same owner.
+        out.mem = out.mem.windows(2).fold(vec![], |mut acc, regions| {
+            let [prev, next]: [_; 2] = regions.try_into().unwrap();
+            if prev.1 == 0 {
+                acc.push(prev);
+            }
+            if next.0 != prev.0 {
+                acc.push(next);
+            }
+            acc
+        });
         out
     }
 }
@@ -140,7 +155,7 @@ mod tests {
                 MemoryRegion(Some(Pid(1)), 10),
                 MemoryRegion(Some(Pid(2)), 21),
                 MemoryRegion(None, 28),
-                MemoryRegion(None, 128)
+                MemoryRegion(Some(Pid(FINAL_MEM_REGION_PID)), 128)
             ]
         )
     }
@@ -173,7 +188,7 @@ mod tests {
                 MemoryRegion(Some(Pid(2)), 10),
                 MemoryRegion(Some(Pid(1)), 17),
                 MemoryRegion(None, 20),
-                MemoryRegion(None, 128)
+                MemoryRegion(Some(Pid(FINAL_MEM_REGION_PID)), 128)
             ]
         )
     }

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use super::{MemAllocator, MemoryRegion, MemoryRequest};
+use super::{MemAllocator, MemoryRegion, MemoryRequest, Pid};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct BestFit {
@@ -14,7 +14,10 @@ impl BestFit {
     pub fn new(mem_size: u32) -> Self {
         Self {
             reqs: VecDeque::new(),
-            mem: vec![MemoryRegion(None, 0), MemoryRegion(None, mem_size)],
+            mem: vec![
+                MemoryRegion(None, 0),
+                MemoryRegion(Some(Pid(super::FINAL_MEM_REGION_PID)), mem_size),
+            ],
             time: 0,
         }
     }
@@ -68,8 +71,26 @@ impl MemAllocator for BestFit {
         out.mem = out
             .mem
             .into_iter()
-            .filter(|mem| mem.0 != Some(proc))
+            .map(|mem| {
+                if mem.0 == Some(proc) {
+                    MemoryRegion(None, mem.1)
+                } else {
+                    mem
+                }
+            })
             .collect();
+        // merge neighboring regions with the same
+        // owner by removing the second region with the same owner.
+        out.mem = out.mem.windows(2).fold(vec![], |mut acc, regions| {
+            let [prev, next]: [_; 2] = regions.try_into().unwrap();
+            if prev.1 == 0 {
+                acc.push(prev);
+            }
+            if next.0 != prev.0 {
+                acc.push(next);
+            }
+            acc
+        });
         out
     }
 }
