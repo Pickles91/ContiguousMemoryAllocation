@@ -73,12 +73,12 @@ impl Gui {
         let total_full: u32 = info.iter().map(|(_, size)| size).sum();
         let percentage = total_free * 100 / total_full;
         format!(
-            "total free: {total_free}, percentage free: {percentage}, holes: {num_holes}\nREMAINING REQUESTS: [{}]",
+            "Total Free: {total_free}, Percentage Free: {percentage}, Hole(s): {num_holes}\nREMAINING REQUESTS: [{}]",
             requests
                 .iter()
                 .map(|req| {
                     format!(
-                        "p{pid}[{lifetime}s]({size}KB)",
+                        "P{pid}[{lifetime}s]({size}KB)",
                         pid = req.process.0,
                         lifetime = req.lifetime,
                         size = req.size
@@ -101,11 +101,11 @@ impl Gui {
         out
     }
     fn draw_gui(&mut self, config: Config) {
-        println!("do you want auto mode? y/n");
+        println!("Do you want auto mode? y/n");
         let mut buff = String::new();
         std::io::stdin().read_line(&mut buff).unwrap();
         if buff.trim().to_lowercase() == "y" {
-            println!("screen will update every 2 seconds");
+            println!("Screen will update every 2 seconds.");
         }
         for i in 0..(*[
             self.frame_info[0].len(),
@@ -117,7 +117,7 @@ impl Gui {
         .unwrap())
         {
             println!("------------------------------------------------------");
-            println!("best fit");
+            println!("Best Fit:");
             println!(
                 "[{}]",
                 Self::draw_ram(&Self::frames(&self.frame_info[1][i].0))
@@ -130,7 +130,7 @@ impl Gui {
                 )
             );
             println!();
-            println!("next fit");
+            println!("Next Fit:");
             println!(
                 "[{}]",
                 Self::draw_ram(&Self::frames(&self.frame_info[0][i].0))
@@ -143,7 +143,7 @@ impl Gui {
                 )
             );
             println!();
-            println!("worst fit");
+            println!("Worst Fit:");
             println!(
                 "[{}]",
                 Self::draw_ram(&Self::frames(&self.frame_info[2][i].0))
@@ -158,7 +158,7 @@ impl Gui {
             if buff.trim().to_lowercase() == "y" {
                 std::thread::sleep(Duration::from_secs(2));
             } else {
-                println!("press enter to advance");
+                println!("Please press enter to advance.");
                 buff.clear();
                 std::io::stdin().read_line(&mut buff).unwrap();
             }

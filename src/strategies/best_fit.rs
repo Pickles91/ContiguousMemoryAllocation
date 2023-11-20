@@ -21,6 +21,10 @@ impl BestFit {
             time: 0,
         }
     }
+
+    /// Fulfills pending memory allocation requests by finding suitable slots in the memory.
+    /// Recursively continues until all requests are fulfilled.
+    /// Modifies internal state.
     fn fullfill_reqs(mut self) -> Self {
         let Some(req) = self.reqs.pop_front() else {
             return self;
@@ -52,8 +56,12 @@ impl BestFit {
         };
         self.fullfill_reqs()
     }
+
+    /// Deallocates memory regions with zero size and merges neighboring regions
     fn dealloc(&self) -> Self {
         let mut out = self.clone();
+
+        // Remove regions with zero size.
         out.mem = out
             .mem
             .into_iter()
@@ -79,12 +87,16 @@ impl BestFit {
 }
 
 impl MemAllocator for BestFit {
+    /// Handles a memory request by cloning the current instance, adding the request to the queue.
     fn request(&self, req: MemoryRequest) -> Self {
         let mut out = self.clone();
         out.reqs.push_back(req);
         out
     }
 
+    /// Advances the simulation by one time unit, updating lifetime counters for occupied
+    /// memory regions. Then, deallocates zero-sized regions and fulfills pending requests.
+    /// Returns the resulting memory state, requests, and the updated allocator instance.
     fn tick(&self) -> (Vec<MemoryRegion>, Vec<MemoryRequest>, Self) {
         let mut out = self.clone();
         out.time += 1;
@@ -94,6 +106,7 @@ impl MemAllocator for BestFit {
                 _ => {}
             }
         }
+        // Update lifetime counters for occupied memory regions.
         let out = out.dealloc().fullfill_reqs();
         (out.mem.clone(), out.reqs.clone().into_iter().collect(), out)
     }
