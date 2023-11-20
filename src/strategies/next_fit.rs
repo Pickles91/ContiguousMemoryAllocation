@@ -129,7 +129,7 @@ impl MemAllocator for NextFit {
         out
     }
 
-    fn tick(&self) -> (Vec<MemoryRegion>, Self) {
+    fn tick(&self) -> (Vec<MemoryRegion>, Vec<MemoryRequest>, Self) {
         let mut out = self.clone();
         out.time += 1;
         for i in out.mem.iter_mut() {
@@ -139,7 +139,7 @@ impl MemAllocator for NextFit {
             }
         }
         let out = out.dealloc().fullfill_reqs();
-        (out.mem.clone(), out)
+        (out.mem.clone(), out.reqs.clone().into_iter().collect(), out)
     }
 }
 
@@ -172,7 +172,7 @@ mod tests {
                 size: 7,
                 lifetime: 5,
             });
-        let (mem, _) = allocator.tick();
+        let (mem, _, _) = allocator.tick();
         assert_eq!(
             mem,
             vec![
@@ -203,7 +203,7 @@ mod tests {
                 size: 13,
                 lifetime: 5,
             });
-        let (mem, _) = allocator.tick();
+        let (mem, _, _) = allocator.tick();
         assert_eq!(
             mem,
             vec![
@@ -219,7 +219,7 @@ mod tests {
     /// so here you go.
     #[test]
     fn basic_test_dealloc() {
-        let (_, alloc) = NextFit::new(128)
+        let (_, _, alloc) = NextFit::new(128)
             .request(MemoryRequest {
                 process: Pid(1),
                 size: 10,

@@ -47,18 +47,21 @@ fn main() {
     );
 }
 
-fn driver<T: MemAllocator>(mut alloc: T, requests: &[MemoryRequest]) -> Vec<Vec<MemoryRegion>> {
+fn driver<T: MemAllocator>(
+    mut alloc: T,
+    requests: &[MemoryRequest],
+) -> Vec<(Vec<MemoryRegion>, Vec<MemoryRequest>)> {
     for req in requests {
         alloc = alloc.request(*req);
     }
-    let mut out: Vec<Vec<MemoryRegion>> = vec![];
+    let mut out = vec![];
     loop {
-        let (mem, alloc_new) = alloc.tick();
+        let (mem, reqs, alloc_new) = alloc.tick();
         alloc = alloc_new;
         if mem.len() == 2 {
             break;
         }
-        out.push(mem);
+        out.push((mem, reqs));
     }
     return out;
 }

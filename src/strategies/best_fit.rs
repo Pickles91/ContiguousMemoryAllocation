@@ -85,7 +85,7 @@ impl MemAllocator for BestFit {
         out
     }
 
-    fn tick(&self) -> (Vec<MemoryRegion>, Self) {
+    fn tick(&self) -> (Vec<MemoryRegion>, Vec<MemoryRequest>, Self) {
         let mut out = self.clone();
         out.time += 1;
         for i in out.mem.iter_mut() {
@@ -95,7 +95,7 @@ impl MemAllocator for BestFit {
             }
         }
         let out = out.dealloc().fullfill_reqs();
-        (out.mem.clone(), out)
+        (out.mem.clone(), out.reqs.clone().into_iter().collect(), out)
     }
 }
 

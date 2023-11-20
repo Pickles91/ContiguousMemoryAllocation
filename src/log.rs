@@ -1,9 +1,9 @@
-use std::{io::Stdout, time::Duration};
+use std::{io::Stdout, ops::Add, time::Duration};
 
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
 use contiguous_memory_allocation::{
-    strategies::{MemoryRegion, Pid},
+    strategies::{MemoryRegion, MemoryRequest, Pid},
     Config,
 };
 use crossterm::event::{self, Event, KeyCode};
@@ -21,7 +21,7 @@ use ratatui::{
 struct Gui {
     // a list of different memories the program has had over it's
     // lifetime. You can get the Nth state of RAM by indexing to mem[n]
-    mem: [Vec<Vec<MemoryRegion>>; 3],
+    frame_info: [Vec<(Vec<MemoryRegion>, Vec<MemoryRequest>)>; 3],
 }
 
 #[derive(PartialEq, Eq)]
@@ -31,8 +31,8 @@ enum ProcessOrFree {
 }
 
 impl Gui {
-    fn new(mem: [Vec<Vec<MemoryRegion>>; 3]) -> Self {
-        Self { mem }
+    fn new(frame_info: [Vec<(Vec<MemoryRegion>, Vec<MemoryRequest>)>; 3]) -> Self {
+        Self { frame_info }
     }
     fn frames(mem: &[MemoryRegion]) -> Vec<(ProcessOrFree, u32)> {
         mem.windows(2)
@@ -49,7 +49,7 @@ impl Gui {
             })
             .collect::<Vec<_>>()
     }
-    fn stats(info: &[(ProcessOrFree, u32)]) -> String {
+    fn stats(info: &[(ProcessOrFree, u32)], requests: &[MemoryRequest]) -> String {
         let total_free: u32 = info
             .iter()
             .filter_map(|(process_or_free, size)| {
@@ -72,7 +72,21 @@ impl Gui {
             .sum();
         let total_full: u32 = info.iter().map(|(_, size)| size).sum();
         let percentage = total_free * 100 / total_full;
-        format!("total free: {total_free}, percentage free: {percentage}, holes: {num_holes}")
+        format!(
+            "total free: {total_free}, percentage free: {percentage}, holes: {num_holes}\nREMAINING REQUESTS: [{}]",
+            requests
+                .iter()
+                .map(|req| {
+                    format!(
+                        "p{pid}[{lifetime}s]({size}KB)",
+                        pid = req.process.0,
+                        lifetime = req.lifetime,
+                        size = req.size
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("|")
+        )
     }
     fn draw_ram(info: &[(ProcessOrFree, u32)]) -> String {
         let mut out = String::new();
@@ -93,23 +107,54 @@ impl Gui {
         if buff.trim().to_lowercase() == "y" {
             println!("screen will update every 2 seconds");
         }
-        for i in 0..(*[self.mem[0].len(), self.mem[1].len(), self.mem[2].len()]
-            .iter()
-            .min()
-            .unwrap())
+        for i in 0..(*[
+            self.frame_info[0].len(),
+            self.frame_info[1].len(),
+            self.frame_info[2].len(),
+        ]
+        .iter()
+        .min()
+        .unwrap())
         {
             println!("------------------------------------------------------");
-            println!("best");
-            println!("{}", Self::stats(&Self::frames(&self.mem[1][i])));
-            println!("[{}]", Self::draw_ram(&Self::frames(&self.mem[1][i])));
+            println!("best fit");
+            println!(
+                "[{}]",
+                Self::draw_ram(&Self::frames(&self.frame_info[1][i].0))
+            );
+            println!(
+                "{}",
+                Self::stats(
+                    &Self::frames(&self.frame_info[1][i].0),
+                    &self.frame_info[1][i].1
+                )
+            );
             println!();
-            println!("next");
-            println!("{}", Self::stats(&Self::frames(&self.mem[0][i])));
-            println!("[{}]", Self::draw_ram(&Self::frames(&self.mem[0][i])));
+            println!("next fit");
+            println!(
+                "[{}]",
+                Self::draw_ram(&Self::frames(&self.frame_info[0][i].0))
+            );
+            println!(
+                "{}",
+                Self::stats(
+                    &Self::frames(&self.frame_info[0][i].0),
+                    &self.frame_info[0][i].1
+                )
+            );
             println!();
-            println!("worst");
-            println!("{}", Self::stats(&Self::frames(&self.mem[2][i])));
-            println!("[{}]", Self::draw_ram(&Self::frames(&self.mem[2][i])));
+            println!("worst fit");
+            println!(
+                "[{}]",
+                Self::draw_ram(&Self::frames(&self.frame_info[2][i].0))
+            );
+            println!(
+                "{}",
+                Self::stats(
+                    &Self::frames(&self.frame_info[2][i].0),
+                    &self.frame_info[2][i].1
+                )
+            );
             if buff.trim().to_lowercase() == "y" {
                 std::thread::sleep(Duration::from_secs(2));
             } else {
@@ -121,6 +166,9 @@ impl Gui {
     }
 }
 
-pub(crate) fn draw_gui(mem: [Vec<Vec<MemoryRegion>>; 3], config: Config) {
-    Gui::new(mem).draw_gui(config);
+pub(crate) fn draw_gui(
+    frame_info: [Vec<(Vec<MemoryRegion>, Vec<MemoryRequest>)>; 3],
+    config: Config,
+) {
+    Gui::new(frame_info).draw_gui(config);
 }

@@ -54,5 +54,5 @@ where
     /// returns a new instance of the memory allocator after
     /// the tick, as well as a copy of the inner working
     /// memory.
-    fn tick(&self) -> (Vec<MemoryRegion>, Self);
+    fn tick(&self) -> (Vec<MemoryRegion>, Vec<MemoryRequest>, Self);
 }
