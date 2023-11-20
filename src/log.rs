@@ -98,6 +98,7 @@ impl Gui {
             .min()
             .unwrap())
         {
+            println!("------------------------------------------------------");
             println!("best");
             println!("{}", Self::stats(&Self::frames(&self.mem[1][i])));
             println!("[{}]", Self::draw_ram(&Self::frames(&self.mem[1][i])));
