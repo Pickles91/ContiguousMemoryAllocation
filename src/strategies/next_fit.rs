@@ -25,11 +25,16 @@ impl NextFit {
             offset: 0,
         }
     }
+
     fn fullfill_reqs(mut self) -> Self {
+
+         // Attempt to pop the front of the requests queue.
         let Some(req) = self.reqs.pop_front() else {
             // if we have no requests nothing to do.
             return self;
         };
+
+        // Find a fitting memory region for the current request.
         let fitting_region = self.mem[self.offset..]
             .windows(2)
             .chain(self.mem[..self.offset + 1].windows(2))
@@ -83,6 +88,8 @@ impl NextFit {
         // do the rest of the requests.
         self.fullfill_reqs()
     }
+
+    /// Deallocates memory regions with zero size and merges neighboring regions
     fn dealloc(&self) -> Self {
         let mut out = self.clone();
         let offset_mem_addr = out.mem[self.offset].1;
@@ -123,12 +130,18 @@ impl NextFit {
 }
 
 impl MemAllocator for NextFit {
+    /// Handles a memory allocation request by adding it to the request queue.
     fn request(&self, req: MemoryRequest) -> Self {
         let mut out = self.clone();
         out.reqs.push_back(req);
         out
     }
 
+    /// Advances the simulation by one time unit, updating memory regions' lifetimes
+    /// and processing deallocation and request fulfillment.
+    /// 
+    /// Returns a tuple containing the current memory layout, processed requests, and
+    /// the updated state of the memory allocator.
     fn tick(&self) -> (Vec<MemoryRegion>, Vec<MemoryRequest>, Self) {
         let mut out = self.clone();
         out.time += 1;
